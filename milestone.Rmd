@@ -6,9 +6,11 @@ output: html_document
 ---
 
 ##Synopsis
-This report details results of downloading, cleaning and exloratory data analysis of data provided by Coursera for the Data Science Capstone Project under guidance by Swiftkey. Three files are provided as corpora for natural language processing intended to lead to a prediction algorithm which, much like Swiftkey's keyboard application, should be able to predict the next word typed based on typed input. In this milestone report, the 10% subsets of the data will be processed separately (for simplicity). Eventually, the entire text will be combined into a central corpus (along with, potentially, other sources) for the purpose of algorithm definition.
+This report details results of downloading, cleaning and exloratory data analysis of data provided by Coursera for the Data Science Capstone Project under guidance by Swiftkey. Three files are provided as corpora for natural language processing intended to lead to a prediction algorithm which, much like Swiftkey's keyboard application, should be able to predict the next word typed based on typed input. Corpora come from news and blog posts (well structured text) as well as twitter (after all, predictive typing is particulary useful on smartphone keyboards, and need not be gramatically correct). 
 
-##Downloading Files
+In this milestone report, the 10% subsets of the data will be processed separately (for simplicity). Eventually, the entire text will be combined into a central corpus (along with, potentially, other sources) for the purpose of algorithm definition.
+
+##Downloading Files and Preliminary Exploration
 
 Text files are provided on the Coursera website: "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip" and are written locally. Additionally, a free list of profane words was found at: "http://www.bannedwordlist.com/lists/swearWords.txt", and is downloaded as a reference for removing profanity from the corpora.
 
@@ -17,14 +19,182 @@ Text files are provided on the Coursera website: "https://d396qusza40orc.cloudfr
 After downloading, the data can be extracted and some basic size information can be gathered.
 
 
-```{r}
-summary(cars)
+```{r echo=FALSE}
+setwd("C:/Users/Michael Crocco/scripts/SwiftKey_Capstone")
 ```
 
-You can also embed plots, for example:
+```{r}
+## GET RAW DATA
+fileUrl <- "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip"
+fileName <- "Coursera-Swiftkey.zip"
+if(!file.exists(fileName)) {
+        download.file(fileUrl, destfile = fileName)
+}
+
+if(!file.exists('badwords.txt')) {
+        download.file('http://www.bannedwordlist.com/lists/swearWords.txt',
+                      destfile = 'badwords.txt')
+}
+dateDownloaded <- date()
+
+if(!file.exists('final/en_US/en_US.blogs.txt')) {
+        unzip(fileName, 'final/en_US/en_US.blogs.txt', junkpaths = TRUE)
+        unzip(fileName, 'final/en_US/en_US.twitter.txt', junkpaths = TRUE)
+        unzip(fileName, 'final/en_US/en_US.news.txt', junkpaths = TRUE)
+}
+
+# raw data files
+blogs <- readLines('en_US.blogs.txt', skipNul = TRUE)
+news <- readLines('en_US.news.txt', skipNul = TRUE)
+twitter <- readLines('en_US.twitter.txt', skipNul = TRUE)
+
+```
 
 ```{r, echo=FALSE}
-plot(cars)
+# function to get corpus size (with simplified filtering)
+rawCorpusStats = function(corps){
+# Takes a raw text file (read line-by-line),
+# and returns a list consisting of the number of
+# rows and words in the file''
+        rows = NROW(corps)
+        totalWords = 0
+        max = length(strsplit(corps[1], ' ')[[1]])
+        min = length(strsplit(corps[1], ' ')[[1]])
+
+        for (row in 1:rows) {
+                corps[row] = gsub(' {2,}',' ',corps[row])
+                words = length(strsplit(corps[row], ' ')[[1]])
+                if (words < min) {
+                        min = words
+                }
+                if (words > max) {
+                        max = words
+                }
+                totalWords = totalWords + words
+        }
+        
+        return(as.list(c(rows, totalWords/rows, min, max, totalWords)))
+}
+
+blogStats <- rawCorpusStats(blogs)
+newsStats <- rawCorpusStats(news)
+twitterStats <- rawCorpusStats(twitter)
+summaryStats <- matrix(c(blogStats, newsStats, twitterStats), byrow = TRUE,
+                       nrow = 3, ncol = 5)
+rownames(summaryStats) <- c("Blogs", "News", "Twitter")
+colnames(summaryStats) <- c("No. of Lines", "Avg. Line Length",
+                            "Min. Length", "Max. Length", "Total Words")
+
+print(summaryStats)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+The size and verbosity of the dataset attributes are shown here:
+```{r echo=FALSE, plot}
+par(mfrow=c(1,2))
+barplot(as.numeric(summaryStats[,1]), main="No. of Lines", xlab = "Source",
+        names.arg = rownames(summaryStats))
+barplot(as.numeric(summaryStats[,5]), main="No. of Words", xlab = "Source",
+        names.arg = rownames(summaryStats))
+
+```
+
+As these corpora are very large, tokenization requires a lot of memory. For simplicity, we'll work with 10% of the data.
+
+##Cleaning and Analysing Data
+
+Punctuation, numbers, whitespace, and profanity should be removed and all words should be converted to lowercase. Additionally, sparse terms are removed from the corpus.
+
+The Text Mining (tm) R-package (by Ingo Feinerer, Kurt Hornik, Artifex Software, Inc.) is used extensively to clean and prepare the corpora.
+```{r}
+# function to clean corpera
+corpusClean = function(corps, minimum){
+# Cleans a sample corpus of text for NLP
+        library(tm)
+        corps = removePunctuation(corps, 
+                                  preserve_intra_word_dashes = TRUE)
+        corps = tolower(corps)
+        corps = stripWhitespace(corps)
+        corps = removeNumbers(corps)
+        corps = removeWords(corps, 'badwords.txt')
+        
+}
+
+```
+
+
+```{r echo=FALSE}
+library(tm)
+
+## SUBSET DATA at 10% for simplification
+set.seed(1337)
+blogs_sample <- sample(blogs, NROW(blogs) * 0.1)
+set.seed(1337)
+news_sample <- sample(news, NROW(news) * 0.1)
+set.seed(1337)
+twitter_sample <- sample(twitter, NROW(news) * 0.1)
+
+## CLEAN SUBSET DATA
+blogs_clean <- corpusClean(blogs_sample, n_min)
+news_clean <- corpusClean(news_sample, n_min)
+twitter_clean <- corpusClean(twitter_sample, n_min)
+blogsCorp <- Corpus(VectorSource(blogs_clean))
+newsCorp <- Corpus(VectorSource(news_clean))
+twitterCorp <- Corpus(VectorSource(twitter_clean))
+
+# tell R to treat corpera as plain text documents
+
+blogsCorp <- tm_map(blogsCorp, PlainTextDocument)
+newsCorp <- tm_map(newsCorp, PlainTextDocument)
+twitterCorp <- tm_map(twitterCorp, PlainTextDocument)
+
+## CONVERT TO document-term-matrix
+blogsDTM <- DocumentTermMatrix(blogsCorp)
+blogsDTM <- removeSparseTerms(blogsDTM, .99)
+blogsDTM
+newsDTM <- DocumentTermMatrix(newsCorp)
+newsDTM <- removeSparseTerms(newsDTM, .99)
+newsDTM
+twitterDTM <- DocumentTermMatrix(twitterCorp)
+twitterDTM <- removeSparseTerms(twitterDTM, .99)
+twitterDTM
+```
+
+Once this preparation has been completed, the 20 most common words in each set can be summarized (note: this is the summary of the subset data).
+
+```{r echo=FALSE}
+print("Blogs")
+blogsfreq <- colSums(as.matrix(blogsDTM))
+blogsfreq[tail(order(blogsfreq),20)]
+print("News")
+newsfreq <- colSums(as.matrix(newsDTM))
+newsfreq[tail(order(newsfreq),20)]
+print("Twitter")
+twitterfreq <- colSums(as.matrix(twitterDTM))
+twitterfreq[tail(order(twitterfreq),20)]
+```
+
+Checking the 20 LEAST common words, it appears the sparsity threshold is reasonable.
+
+```{r echo=FALSE}
+print("Blogs")
+blogsfreq[head(order(blogsfreq),20)]
+print("News")
+newsfreq[head(order(newsfreq),20)]
+print("Twitter")
+twitterfreq[head(order(twitterfreq),20)]
+```
+
+##Next Steps
+
+###Further Dataset Preparation
+
+* As mentioned, all three sources will be combined in their entirety in a single corpus.
+
+* Methods will be developed to further manage memory usage and to write results to files for future use.
+
+###Prediction Algorithm
+
+* Document Term Matrices for quadgrams (groups of four words), trigrams (groups of three), bigrams (groups of two) and unigrams will be created from the greater corpus.
+* Once the input has been typed by the user of the application, the input will be searched for starting with the highest order Document Term Matrix, if it isn't found (and can't be used for a prediction), the next, lower order Matric will be referenced. If the input can't be found here, the application will suggest the most common unigram (single word). 
+* If it's possible to make the application analyse text input in real-time, it would be possible to suggest autocompletion of the most common words begining with what has been typed. This is not within the scope of the project, but a desireable outcome that will be attempted.

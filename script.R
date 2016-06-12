@@ -49,15 +49,16 @@ rawCorpusStats = function(corps){
         
         return(as.list(c(rows, totalWords/rows, min, max, totalWords)))
 }
-blogStats <- rawCorspusStats(blogs)
+blogStats <- rawCorpusStats(blogs)
 newsStats <- rawCorpusStats(news)
 twitterStats <- rawCorpusStats(twitter)
-summaryStats <- matrix(c(blogStats, newsStats, twitterStats))
+summaryStats <- matrix(c(blogStats, newsStats, twitterStats), byrow = TRUE,
+                       nrow = 3, ncol = 5)
 rownames(summaryStats) <- c("Blogs", "News", "Twitter")
 colnames(summaryStats) <- c("No. of Lines", "Avg. Line Length",
                             "Min. Length", "Max. Length", "Total Words")
 
-
+print(summaryStats)
 
 
 # function to clean corpera
@@ -86,9 +87,7 @@ corpusClean = function(corps, minimum){
         
 }
 minLength <- 4
-blogs <- corpusClean(blogs, minLength)
-news <- corpusClean(news, minLength)
-twitter <- corpusClean(twitter, minLength)
+
 
 ## LOAD REQUIRED LIBRARIES
 
@@ -96,16 +95,16 @@ library(tm)
 
 ## SUBSET DATA at 10% for simplification
 set.seed(1337)
-blogs_sample <- sample(blogs, NROW(blogs) * 0.1)
+blogs_sample <- sample(blogs, NROW(blogs) * 0.01)
 set.seed(1337)
 news_sample <- sample(news, NROW(news) * 0.1)
 set.seed(1337)
 twitter_sample <- sample(twitter, NROW(news) * 0.1)
 
 ## CLEAN SUBSET DATA
-blogs_clean <- corpusClean(blogs_sample)
-news_clean <- corpusClean(news_sample)
-twitter_clean <- corpusClean(twitter_sample)
+blogs_clean <- corpusClean(blogs_sample, 4)
+news_clean <- corpusClean(news_sample, 4)
+twitter_clean <- corpusClean(twitter_sample, 4)
 
 
 
@@ -117,7 +116,7 @@ twitter_clean <- corpusClean(twitter_sample)
 
 blogsCorp <- Corpus(VectorSource(blogs_clean))
 newsCorp <- Corpus(VectorSource(news_clean))
-twitterCorp <- Corpus(VectorSource(twitterCorp))
+twitterCorp <- Corpus(VectorSource(twitter_clean))
 
 # tell R to treat corpera as plain text documents
 
@@ -130,7 +129,7 @@ blogsDTM <- DocumentTermMatrix(blogsCorp)
 blogsDTM
 newsDTM <- DocumentTermMatrix(newsCorp)
 newsDTM
-twitterDTM <- DDocumentTermMatrix(twitterCorp)
+twitterDTM <- DocumentTermMatrix(twitterCorp)
 twitterDTM
 
 #look at term frequency
@@ -139,18 +138,18 @@ blogsfreq = colSums(as.matrix(blogsDTM))
 blogsfreq[tail(order(blogsfreq),20)]
 
 #create plots
-library(ggplot2)   
-p <- ggplot(subset(wf, freq>50), aes(word, freq))    
-p <- p + geom_bar(stat="identity")   
-p <- p + theme(axis.text.x=element_text(angle=45, hjust=1))   
-p   
+#library(ggplot2)   
+#p <- ggplot(subset(wf, freq>50), aes(word, freq))    
+#p <- p + geom_bar(stat="identity")   
+#p <- p + theme(axis.text.x=element_text(angle=45, hjust=1))   
+#p   
 
 
 #remove stopwords
 
 
 ## Parallel Computing
-CPU <- parallel::detectCores()
-registerDoParallel(CPU)
+#CPU <- parallel::detectCores()
+#registerDoParallel(CPU)
 
                 ## do calculations here
