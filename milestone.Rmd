@@ -1,0 +1,30 @@
+---
+title: "Capstone Milestone Report"
+author: "Michael Crocco"
+date: "June 12, 2016"
+output: html_document
+---
+
+##Synopsis
+This report details results of downloading, cleaning and exloratory data analysis of data provided by Coursera for the Data Science Capstone Project under guidance by Swiftkey. Three files are provided as corpora for natural language processing intended to lead to a prediction algorithm which, much like Swiftkey's keyboard application, should be able to predict the next word typed based on typed input. In this milestone report, the 10% subsets of the data will be processed separately (for simplicity). Eventually, the entire text will be combined into a central corpus (along with, potentially, other sources) for the purpose of algorithm definition.
+
+##Downloading Files
+
+Text files are provided on the Coursera website: "https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip" and are written locally. Additionally, a free list of profane words was found at: "http://www.bannedwordlist.com/lists/swearWords.txt", and is downloaded as a reference for removing profanity from the corpora.
+
+##Extracting and Summarizing Data
+
+After downloading, the data can be extracted and some basic size information can be gathered.
+
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
